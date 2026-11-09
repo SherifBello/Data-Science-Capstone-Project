@@ -406,6 +406,9 @@ This confirmed that the exported model passed the ONNX structural validation che
 
 ## 13 APPLICATION DEVELOPMENT AND DEPLOYMENT
 
+<img width="567" height="667" alt="image" src="https://github.com/user-attachments/assets/a8eefd84-39f2-44b5-8601-e2b959cf4b8e" />
+
+
 The trained ONNX model was integrated into a web application using HTML, CSS, and JavaScript.
 
 The application uses ONNX Runtime Web to execute the trained machine-learning model directly in the browser.
