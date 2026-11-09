@@ -1,0 +1,345 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Nigerian LPG Price Prediction</title>
+
+    <!-- ONNX Runtime Web -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            padding: 30px 15px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 550px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            text-align: center;
+            color: #075985;
+            font-size: 25px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 15px;
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0369a1;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #ecfdf5;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .result h2 {
+            color: #047857;
+            font-size: 17px;
+        }
+
+        .price {
+            color: #065f46;
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .error {
+            color: #dc2626;
+            text-align: center;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>LPG Price Prediction</h1>
+
+    <p class="subtitle">
+        Gombe LPG Price Forecasting
+    </p>
+
+    <form id="predictionForm">
+
+        <label for="usd">
+            USD/NGN Exchange Rate
+        </label>
+
+        <input
+            type="number"
+            id="usd"
+            placeholder="Enter exchange rate"
+            min="0.01"
+            step="any"
+            required
+        >
+
+        <label for="month">
+            Month
+        </label>
+
+        <select id="month" required>
+            <option value="">Select Month</option>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+        </select>
+
+        <label for="day">
+            Day of Week
+        </label>
+
+        <select id="day" required>
+            <option value="">Select Day</option>
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+        </select>
+
+        <button type="submit" id="predictBtn" disabled>
+            Loading Model...
+        </button>
+
+    </form>
+
+    <div class="result" id="result">
+        <h2>Predicted LPG Selling Price</h2>
+        <div class="price" id="predictedPrice">₦0.00</div>
+        <p>Per Kilogram (₦/kg)</p>
+    </div>
+
+    <p class="status" id="status">
+        Loading ONNX model...
+    </p>
+
+    <p class="error" id="error"></p>
+
+</div>
+
+<script>
+
+    // ONNX model session
+    let session = null;
+
+    // Load the trained ONNX model
+    async function loadModel() {
+
+        const status = document.getElementById("status");
+        const button = document.getElementById("predictBtn");
+
+        try {
+
+            session = await ort.InferenceSession.create(
+                "./model.onnx"
+            );
+
+            status.textContent = "Model loaded successfully.";
+
+            button.disabled = false;
+            button.textContent = "Predict LPG Price";
+
+            console.log("Model loaded successfully");
+            console.log("Input names:", session.inputNames);
+            console.log("Output names:", session.outputNames);
+
+        } catch (error) {
+
+            status.textContent = "Unable to load model.";
+
+            document.getElementById("error").textContent =
+                "Error: " + error.message;
+
+            console.error(error);
+        }
+    }
+
+
+    // Run prediction
+    document.getElementById("predictionForm")
+        .addEventListener("submit", async function(event) {
+
+        event.preventDefault();
+
+        const button = document.getElementById("predictBtn");
+        const errorBox = document.getElementById("error");
+        const resultBox = document.getElementById("result");
+
+        errorBox.textContent = "";
+        resultBox.style.display = "none";
+
+        if (!session) {
+            errorBox.textContent = "Model is not loaded.";
+            return;
+        }
+
+        const usd = Number(document.getElementById("usd").value);
+        const month = Number(document.getElementById("month").value);
+        const day = Number(document.getElementById("day").value);
+
+        if (
+            !Number.isFinite(usd) ||
+            usd <= 0 ||
+            !Number.isInteger(month) ||
+            month < 1 || month > 12 ||
+            !Number.isInteger(day) ||
+            day < 0 || day > 6
+        ) {
+            errorBox.textContent = "Please enter valid input values.";
+            return;
+        }
+
+        try {
+
+            button.disabled = true;
+            button.textContent = "Predicting...";
+
+            // Input order must match Python training:
+            // USD_NGN, Month, Day_of_Week
+
+            const inputData = new Float32Array([
+                usd,
+                month,
+                day
+            ]);
+
+            // Create ONNX tensor
+            const inputTensor = new ort.Tensor(
+                "float32",
+                inputData,
+                [1, 3]
+            );
+
+            // Use the actual input name from ONNX model
+            const inputName = session.inputNames[0];
+
+            const feeds = {};
+            feeds[inputName] = inputTensor;
+
+            // Run ONNX inference
+            const output = await session.run(feeds);
+
+            // Read model prediction
+            const outputName = session.outputNames[0];
+
+            const prediction = output[outputName].data[0];
+
+            if (!Number.isFinite(prediction)) {
+                throw new Error("Model returned an invalid prediction.");
+            }
+
+            // Display predicted LPG price
+            document.getElementById("predictedPrice").textContent =
+                "₦" + Number(prediction).toLocaleString(
+                    "en-NG",
+                    {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }
+                );
+
+            resultBox.style.display = "block";
+
+        } catch (error) {
+
+            errorBox.textContent =
+                "Prediction failed: " + error.message;
+
+            console.error(error);
+
+        } finally {
+
+            button.disabled = false;
+            button.textContent = "Predict LPG Price";
+
+        }
+
+    });
+
+
+    // Start application
+    loadModel();
+
+</script>
+
+</body>
+</html>
+
