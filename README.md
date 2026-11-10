@@ -330,7 +330,7 @@ A value closer to 1 generally indicates stronger explanatory performance.
 
 ### 11.1 Model B: Linear Regression
 
-The initial Linear Regression experiment produced the following results:
+The polynomial Linear Regression experiment produced the following results:
 
 | Evaluation Metric | Result |
 |---|---:|
